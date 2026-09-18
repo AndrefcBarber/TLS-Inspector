@@ -24,6 +24,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -412,6 +416,7 @@ button.primary:disabled {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  scroll-margin-top: 86px;
 }
 
 .panel.empty h2 {

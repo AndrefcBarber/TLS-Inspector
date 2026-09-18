@@ -89,8 +89,24 @@ function showError(message) {
   emptyState.hidden = true;
 }
 
+function rememberInUrl(payload) {
+  const params = new URLSearchParams();
+  if (payload.scenarioId) {
+    params.set("scenario", payload.scenarioId);
+    if (payload.useTrustAnchor) params.set("trust", "1");
+  } else {
+    params.set("host", payload.host);
+    if (payload.port && payload.port !== 443) params.set("port", payload.port);
+    if (payload.protocol && payload.protocol !== "system") params.set("protocol", payload.protocol);
+    if (payload.checkRevocation) params.set("revocation", "1");
+  }
+
+  history.replaceState(null, "", `?${params}`);
+}
+
 async function inspect(payload, label, scenario) {
   if (inFlight) return;
+  rememberInUrl(payload);
   setBusy(true, label);
 
   try {
@@ -132,7 +148,9 @@ function renderResult(result, scenario) {
   resultPanel.hidden = false;
   emptyState.hidden = true;
   errorState.hidden = true;
-  resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  // On narrow screens the results sit below the whole sidebar, so bring them into view properly.
+  const stacked = window.matchMedia("(max-width: 980px)").matches;
+  resultPanel.scrollIntoView({ behavior: "smooth", block: stacked ? "start" : "nearest" });
 }
 
 function renderVerdict(result, verdictClass, verdictIcon) {
@@ -338,4 +356,31 @@ scenariosContainer.addEventListener("click", (event) => {
   );
 });
 
-loadSidebar();
+/** Restores an inspection from the query string, so a result can be linked to or reloaded. */
+function runFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const scenarioId = params.get("scenario");
+
+  if (scenarioId) {
+    const scenario = scenarios.find((entry) => entry.id === scenarioId);
+    if (!scenario) return;
+
+    inspect(
+      { scenarioId, useTrustAnchor: params.get("trust") === "1" },
+      `${scenario.title.toLowerCase()} on localhost:${scenario.port}`,
+      scenario,
+    );
+    return;
+  }
+
+  const host = params.get("host");
+  if (!host) return;
+
+  document.getElementById("host").value = host;
+  document.getElementById("port").value = params.get("port") ?? 443;
+  document.getElementById("protocol").value = params.get("protocol") ?? "system";
+  document.getElementById("revocation").checked = params.get("revocation") === "1";
+  form.requestSubmit();
+}
+
+loadSidebar().then(runFromUrl);

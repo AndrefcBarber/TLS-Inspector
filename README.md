@@ -41,7 +41,8 @@ dotnet run --project src/TlsInspector.Web
 Then open <http://localhost:43127>. The port is set in `src/TlsInspector.Web/appsettings.json`.
 
 The sidebar offers three ways in: type any host and port, click a live endpoint (`example.com`,
-`expired.badssl.com`, and friends), or run one of the local scenarios described below.
+`expired.badssl.com`, and friends), or run one of the local scenarios described below. Every result
+is linkable — `?host=expired.badssl.com` or `?scenario=private-ca&trust=1` runs on page load.
 
 ## Run the CLI
 
