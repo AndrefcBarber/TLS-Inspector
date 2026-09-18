@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+.vscode/
+TestResults/
+*.pfx
+*.pem
+!tests/**/fixtures/*.pem
