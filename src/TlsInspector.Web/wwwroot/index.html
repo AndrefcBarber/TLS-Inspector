@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TLS Inspector — see what certificate validation actually checks</title>
+    <meta
+      name="description"
+      content="Connect to any TLS endpoint and see every check a client performs: chain of trust, validity window, hostname binding, and negotiated cryptography."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%94%92%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3 4 6v6c0 4.4 3.2 8.2 8 9 4.8-.8 8-4.6 8-9V6l-8-3Z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+          </span>
+          <div>
+            <h1>TLS Inspector</h1>
+            <p>What a client checks before it trusts a certificate — and what happens when a check fails.</p>
+          </div>
+        </div>
+        <a class="repo-link" href="#how-it-works">How validation works</a>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="card" aria-labelledby="inspect-heading">
+          <h2 id="inspect-heading">Inspect an endpoint</h2>
+          <form id="inspect-form" novalidate>
+            <div class="field-row">
+              <div class="field grow">
+                <label for="host">Host</label>
+                <input id="host" name="host" type="text" placeholder="example.com" autocomplete="off" spellcheck="false" value="example.com" required />
+              </div>
+              <div class="field port">
+                <label for="port">Port</label>
+                <input id="port" name="port" type="number" min="1" max="65535" value="443" />
+              </div>
+            </div>
+
+            <details class="advanced">
+              <summary>Advanced options</summary>
+              <div class="field">
+                <label for="sni">Server name (SNI)</label>
+                <input id="sni" name="sni" type="text" placeholder="Defaults to the host above" autocomplete="off" spellcheck="false" />
+                <p class="hint">Send a different name than the one you connect to, the way a shared load balancer sees it.</p>
+              </div>
+              <div class="field">
+                <label for="protocol">Protocol</label>
+                <select id="protocol" name="protocol">
+                  <option value="system">Let the OS choose</option>
+                  <option value="tls13">TLS 1.3 only</option>
+                  <option value="tls12">TLS 1.2 only</option>
+                </select>
+              </div>
+              <label class="checkbox">
+                <input id="revocation" name="revocation" type="checkbox" />
+                <span>Check revocation online (CRL / OCSP)</span>
+              </label>
+              <div class="field">
+                <label for="anchor">Trust anchor (PEM)</label>
+                <textarea id="anchor" name="anchor" rows="4" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----&#10;Paste a CA certificate to validate against it instead of the system trust store"></textarea>
+                <p class="hint">This is how you trust an internal CA without disabling validation.</p>
+              </div>
+            </details>
+
+            <button class="primary" type="submit" id="submit-button">
+              <span class="button-label">Run validation</span>
+            </button>
+          </form>
+        </section>
+
+        <section class="card" aria-labelledby="live-heading">
+          <h2 id="live-heading">Live endpoints</h2>
+          <p class="card-note">Real servers on the internet, including ones that are broken on purpose.</p>
+          <div id="presets" class="chip-list" role="list"></div>
+        </section>
+
+        <section class="card" aria-labelledby="scenario-heading">
+          <h2 id="scenario-heading">Local scenarios</h2>
+          <p class="card-note">
+            TLS servers running inside this app on loopback, each presenting a different flawed certificate. No internet required.
+          </p>
+          <div id="scenarios" class="scenario-list"></div>
+        </section>
+      </aside>
+
+      <section class="results" aria-live="polite">
+        <div id="empty-state" class="panel empty">
+          <h2>Pick an endpoint to inspect</h2>
+          <p>
+            Every TLS client answers the same four questions before it sends a single byte of application data. The inspector runs
+            two handshakes against your target: one with validation suspended, so even a broken certificate can be read, and one
+            with validation untouched, so the verdict you see is the one a real client reaches.
+          </p>
+          <ol id="how-it-works" class="checklist">
+            <li>
+              <strong>Does the chain lead somewhere trusted?</strong>
+              Each certificate is signed by the one above it, ending at a root the client already trusts.
+            </li>
+            <li>
+              <strong>Is it valid right now?</strong>
+              Expiry bounds how long a stolen key stays useful and keeps revocation data meaningful.
+            </li>
+            <li>
+              <strong>Does it cover this hostname?</strong>
+              Without binding the certificate to the name you asked for, any trusted certificate could impersonate any site.
+            </li>
+            <li>
+              <strong>Is the cryptography still strong enough?</strong>
+              Key sizes, signature algorithms and protocol versions all age out of acceptance.
+            </li>
+          </ol>
+        </div>
+
+        <div id="loading-state" class="panel loading" hidden>
+          <div class="spinner" aria-hidden="true"></div>
+          <p>Running two handshakes against <span id="loading-target">the endpoint</span>…</p>
+        </div>
+
+        <div id="error-state" class="panel error" hidden>
+          <h2>That request could not be completed</h2>
+          <p id="error-message"></p>
+        </div>
+
+        <article id="result" hidden></article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Built with ASP.NET Core and <code>System.Net.Security.SslStream</code>. The certificate validation callback here returns
+        <code>true</code> on purpose so broken certificates can be read — never do that in production code.
+      </p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
