@@ -44,6 +44,19 @@ The sidebar offers three ways in: type any host and port, click a live endpoint 
 `expired.badssl.com`, and friends), or run one of the local scenarios described below. Every result
 is linkable — `?host=expired.badssl.com` or `?scenario=private-ca&trust=1` runs on page load.
 
+### On Windows
+
+```powershell
+cd "C:\MYCODE\TLS Inspector"
+dotnet run --project src\TlsInspector.Web
+```
+
+Everything here is cross-platform: the demo certificates are round-tripped through PKCS#12 so their
+private keys attach the way Schannel expects, and the loopback servers bind to `127.0.0.1` on an
+ephemeral port. One result does differ by platform. Windows completes the handshake for the
+`weak-key` scenario and reports a weak-key warning, where Linux refuses the connection outright
+because OpenSSL's security level rejects the 1024-bit key first.
+
 ## Run the CLI
 
 ```bash
