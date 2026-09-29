@@ -1,0 +1,17 @@
+{
+  "name": "TLS Inspector",
+  "install": "./.cursor/install.sh",
+  "terminals": [
+    {
+      "name": "web",
+      "command": "export PATH=\"$HOME/.dotnet:$PATH\" && dotnet run --project src/TlsInspector.Web",
+      "description": "The TLS Inspector web app on http://127.0.0.1:43127"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 43127
+    }
+  ]
+}
